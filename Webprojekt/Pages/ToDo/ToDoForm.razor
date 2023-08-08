@@ -1,0 +1,75 @@
+﻿@using Webprojekt.Data
+@page "/todo-form"
+
+@inject ToDoDbContext DbContext
+@inject NavigationManager Navigation
+
+<h3>Create/Edit To-Do Item</h3>
+
+<EditForm Model="@ToDoModel" OnValidSubmit="@SaveToDo">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div>
+        <label>Title:</label>
+        <InputText @bind-Value="ToDoModel.Titel" />
+    </div>
+
+    <div>
+        <label>Description:</label>
+        <InputText @bind-Value="ToDoModel.Beskrivelse" />
+    </div>
+
+    <div>
+        <label>Date:</label>
+        <InputDate @bind-Value="ToDoModel.Dato" min="@MinDate" max="@MaxDate" />
+    </div>
+
+    <button type="submit">Save</button>
+    <button @onclick="Cancel">Cancel</button>
+</EditForm>
+
+@code {
+    private ToDoModel ToDoModel = new ToDoModel();
+    private string MinDate;
+    private string MaxDate;
+
+    private void SaveToDo()
+    {
+        if (ToDoModel.ToDoID == 0)
+        {
+            // New To-Do item
+            ToDoModel.UserID = Guid.NewGuid();
+            DbContext.ToDoContext.Add(ToDoModel);
+        }
+        else
+        {
+            // Existing To-Do item
+            DbContext.ToDoContext.Update(ToDoModel);
+        }
+
+        DbContext.SaveChanges();
+        Navigation.NavigateTo("/todo");
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/todo");
+    }
+
+    [Parameter]
+    public int Id { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Id != 0)
+        {
+            ToDoModel = DbContext.ToDoContext.Find(Id);
+
+        }
+        // Set minimum and maximum dates dynamically
+        int currentYear = DateTime.Now.Year;
+        MinDate = new DateTime(currentYear - 150, 1, 1).ToString("yyyy-MM-dd");
+        MaxDate = new DateTime(currentYear + 100, 12, 31).ToString("yyyy-MM-dd");
+    }
+}

@@ -1,0 +1,78 @@
+﻿@page "/todo"
+@using Webprojekt.Data;
+
+@inject ToDoDbContext DbContext
+@inject NavigationManager Navigation
+
+<h3>To-Do List</h3>
+
+@if (ToDoList != null && ToDoList.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var todo in ToDoList)
+            {
+                <tr>
+                    <td>@todo.Titel</td>
+                    <td>@todo.Beskrivelse</td>
+                    <td>@todo.Dato.ToShortDateString()</td>
+                    <td>
+                        <button @onclick="() => EditToDo(todo.ToDoID)">Edit</button>
+                        <button @onclick="() => DeleteToDo(todo.ToDoID)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No to-do items found.</p>
+}
+
+<button @onclick="CreateToDo">Create New</button>
+
+@code
+{
+    private List<ToDoModel> ToDoList;
+
+    protected override void OnInitialized()
+    {
+        RefreshList();
+    }
+
+    private void RefreshList()
+    {
+        // Fetch the list of to-do items from the database
+        ToDoList = DbContext.ToDoContext.ToList();
+    }
+
+    private void EditToDo(int id)
+    {
+        Navigation.NavigateTo($"/todo-form/{id}");
+    }
+
+    private void DeleteToDo(int id)
+    {
+        var todo = DbContext.ToDoContext.Find(id);
+        if (todo != null)
+        {
+            DbContext.ToDoContext.Remove(todo);
+            DbContext.SaveChanges();
+            RefreshList();
+        }
+    }
+
+    private void CreateToDo()
+    {
+        Navigation.NavigateTo("/todo-form");
+    }
+}
