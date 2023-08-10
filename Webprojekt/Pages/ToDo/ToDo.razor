@@ -1,8 +1,11 @@
 ﻿@page "/todo"
+@using System.Security.Claims;
 @using Webprojekt.Data;
+@using Microsoft.AspNetCore.Authorization
 
 @inject ToDoDbContext DbContext
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <h3>To-Do List</h3>
 
@@ -40,19 +43,32 @@ else
 
 <button @onclick="CreateToDo">Create New</button>
 
+
 @code
 {
     private List<ToDoModel> ToDoList;
+    private Guid currentUserID; // Store the current user's ID
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        RefreshList();
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier); // Use the correct claim type for your user ID
+            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out Guid userId))
+            {
+                currentUserID = userId;
+                RefreshList();
+            }
+        }
     }
 
     private void RefreshList()
     {
-        // Fetch the list of to-do items from the database
-        ToDoList = DbContext.ToDoContext.ToList();
+        // Fetch the list of to-do items associated with the current user from the database
+        ToDoList = DbContext.ToDoContext.Where(todo => todo.UserID == currentUserID).ToList();
     }
 
     private void EditToDo(int id)

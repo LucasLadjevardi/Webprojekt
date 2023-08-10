@@ -1,8 +1,11 @@
-﻿@using Webprojekt.Data
+﻿@using System.Security.Claims;
+@using Webprojekt.Data
 @page "/todo-form"
 
 @inject ToDoDbContext DbContext
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
 
 <h3>Create/Edit To-Do Item</h3>
 
@@ -33,13 +36,39 @@
     private ToDoModel ToDoModel = new ToDoModel();
     private string MinDate;
     private string MaxDate;
+    private Guid currentUserID; // Declare and initialize here
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out Guid userId))
+            {
+                currentUserID = userId; // Initialize currentUserID here
+            }
+        }
+
+        if (Id != 0)
+        {
+            ToDoModel = DbContext.ToDoContext.Find(Id);
+
+        }
+        // Set minimum and maximum dates dynamically
+        int currentYear = DateTime.Now.Year;
+        MinDate = new DateTime(currentYear - 150, 1, 1).ToString("yyyy-MM-dd");
+        MaxDate = new DateTime(currentYear + 100, 12, 31).ToString("yyyy-MM-dd");
+    }
 
     private void SaveToDo()
     {
         if (ToDoModel.ToDoID == 0)
         {
             // New To-Do item
-            ToDoModel.UserID = Guid.NewGuid();
+            ToDoModel.UserID = currentUserID; // Use the authenticated user's ID
             DbContext.ToDoContext.Add(ToDoModel);
         }
         else
@@ -60,16 +89,4 @@
     [Parameter]
     public int Id { get; set; }
 
-    protected override void OnInitialized()
-    {
-        if (Id != 0)
-        {
-            ToDoModel = DbContext.ToDoContext.Find(Id);
-
-        }
-        // Set minimum and maximum dates dynamically
-        int currentYear = DateTime.Now.Year;
-        MinDate = new DateTime(currentYear - 150, 1, 1).ToString("yyyy-MM-dd");
-        MaxDate = new DateTime(currentYear + 100, 12, 31).ToString("yyyy-MM-dd");
-    }
 }
