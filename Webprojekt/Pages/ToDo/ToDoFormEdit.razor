@@ -1,14 +1,14 @@
 ﻿@using System.Security.Claims;
-@using System.Text;
 @using Microsoft.AspNetCore.DataProtection;
+@using System.Text;
+@using System.Security.Cryptography;
 @using Webprojekt.Data
-@page "/todo-form"
+@page "/todo-form/{id:int}"
 
 @inject ToDoDbContext DbContext
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IDataProtectionProvider DataProtectionProvider
-
 
 <h3>Create/Edit To-Do Item</h3>
 
@@ -40,6 +40,7 @@
     private string MinDate;
     private string MaxDate;
     private Guid currentUserID; // Declare and initialize here
+    private Dictionary<string, string> originalValues = new Dictionary<string, string>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -58,8 +59,12 @@
         if (Id != 0)
         {
             ToDoModel = DbContext.ToDoContext.Find(Id);
-
+            originalValues["Titel"] = ToDoModel.Titel; // Store original Titel
+            originalValues["Beskrivelse"] = ToDoModel.Beskrivelse; // Store original Beskrivelse
+            ToDoModel.Titel = DecryptAndDecode(ToDoModel.Titel);
+            ToDoModel.Beskrivelse = DecryptAndDecode(ToDoModel.Beskrivelse);
         }
+
         // Set minimum and maximum dates dynamically
         int currentYear = DateTime.Now.Year;
         MinDate = new DateTime(currentYear - 150, 1, 1).ToString("yyyy-MM-dd");
@@ -71,23 +76,41 @@
         if (ToDoModel.ToDoID == 0)
         {
             // New To-Do item
-            ToDoModel.UserID = currentUserID; // Use the authenticated user's ID
-            ToDoModel.Titel = Convert.ToBase64String(Encrypt(ToDoModel.Titel)); // Encrypt Title
-            ToDoModel.Beskrivelse = Convert.ToBase64String(Encrypt(ToDoModel.Beskrivelse)); // Encrypt Beskrivelse
+            ToDoModel.UserID = currentUserID;
+            if (!IsSameValue("Titel") || !IsSameValue("Beskrivelse"))
+            {
+                ToDoModel.Titel = Convert.ToBase64String(Encrypt(ToDoModel.Titel));
+                ToDoModel.Beskrivelse = Convert.ToBase64String(Encrypt(ToDoModel.Beskrivelse));
+            }
             DbContext.ToDoContext.Add(ToDoModel);
         }
         else
         {
+            // Existing To-Do item
             var existingItem = DbContext.ToDoContext.Find(ToDoModel.ToDoID);
             existingItem.Dato = ToDoModel.Dato;
             existingItem.UserID = currentUserID;
-            existingItem.Titel = Convert.ToBase64String(Encrypt(ToDoModel.Titel)); // Encrypt Title
-            existingItem.Beskrivelse = Convert.ToBase64String(Encrypt(ToDoModel.Beskrivelse)); // Encrypt Beskrivelse
+
+            if (!IsSameValue("Titel") || !IsSameValue("Beskrivelse"))
+            {
+                existingItem.Titel = Convert.ToBase64String(Encrypt(ToDoModel.Titel));
+                existingItem.Beskrivelse = Convert.ToBase64String(Encrypt(ToDoModel.Beskrivelse));
+            }
+
             DbContext.ToDoContext.Update(existingItem);
         }
 
         DbContext.SaveChanges();
         Navigation.NavigateTo("/todo");
+    }
+
+    private bool IsSameValue(string fieldName)
+    {
+        if (originalValues.ContainsKey(fieldName))
+        {
+            return originalValues[fieldName] == ToDoModel.GetType().GetProperty(fieldName).GetValue(ToDoModel)?.ToString();
+        }
+        return false;
     }
 
     private void Cancel()
@@ -110,5 +133,4 @@
 
     [Parameter]
     public int Id { get; set; }
-
 }

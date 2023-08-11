@@ -1,11 +1,14 @@
 ﻿@page "/todo"
 @using System.Security.Claims;
+@using System.Text;
+@using Microsoft.AspNetCore.DataProtection;
 @using Webprojekt.Data;
 @using Microsoft.AspNetCore.Authorization
 
 @inject ToDoDbContext DbContext
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IDataProtectionProvider DataProtectionProvider
 
 <h3>To-Do List</h3>
 
@@ -24,8 +27,8 @@
             @foreach (var todo in ToDoList)
             {
                 <tr>
-                    <td>@todo.Titel</td>
-                    <td>@todo.Beskrivelse</td>
+                    <td>@DecryptAndDecode(todo.Titel)</td>
+                    <td>@DecryptAndDecode(todo.Beskrivelse)</td>
                     <td>@todo.Dato.ToShortDateString()</td>
                     <td>
                         <button @onclick="() => EditToDo(todo.ToDoID)">Edit</button>
@@ -85,6 +88,13 @@ else
             DbContext.SaveChanges();
             RefreshList();
         }
+    }
+
+    private string DecryptAndDecode(string encryptedInput)
+    {
+        var protector = DataProtectionProvider.CreateProtector("TodoProtection");
+        byte[] decryptedBytes = protector.Unprotect(Convert.FromBase64String(encryptedInput));
+        return Encoding.UTF8.GetString(decryptedBytes);
     }
 
     private void CreateToDo()

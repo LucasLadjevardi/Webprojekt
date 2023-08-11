@@ -12,8 +12,8 @@ using Webprojekt.Data;
 namespace Webprojekt.Migrations
 {
     [DbContext(typeof(ToDoDbContext))]
-    [Migration("20230808082834_inittodo")]
-    partial class inittodo
+    [Migration("20230811081122_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
